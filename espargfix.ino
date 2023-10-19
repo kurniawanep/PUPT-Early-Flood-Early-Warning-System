@@ -19,22 +19,25 @@ WiFiClientSecure client;
 UniversalTelegramBot bot(BOTtoken, client);
 const IPAddress server(0,0,0,0);
 const int httpPort = 80;
-// const int BUFFER_SIZE = JSON_OBJECT_SIZE(2048);
-// const char* ssid = "STMKG Spot";
-// const char* password = "stmkg2014";
 const char* ssid = "STMKG Spot";
 const char* password = "stmkg2014";
 
 const int reedSwitchPin = D3; // Digital pin 13
-volatile int tipCount = 0;    // Counter for tip events
+volatile int tipCount10 = 0;    // Counter for tip events
+volatile int tipCount24 = 0;    // Counter for tip events
 volatile float conversionFactor = 0.2;
-float rain=0;
-unsigned long lastResetTime = 0; // Variable to store the last reset time
-const unsigned long resetInterval = 86400000; // 1 minute in milliseconds
+float rain10=0;
+float rain24=0;
+unsigned long lastResetTime10 = 0; // Variable to store the last reset time
+unsigned long lastResetTime24 = 0; // Variable to store the last reset time
+// const unsigned long resetInterval = 86400000; // 1 minute in milliseconds
+
 
 void IRAM_ATTR reedSwitchISR() {
-  tipCount++; // Increment the tip count when the reed switch is triggered
-  rain = tipCount * conversionFactor;
+  tipCount10++; // Increment the tip count when the reed switch is triggered
+  rain10 = tipCount10 * conversionFactor;
+  tipCount24++; // Increment the tip count when the reed switch is triggered
+  rain24 = tipCount24 * conversionFactor;
   
 }
 
@@ -42,6 +45,11 @@ void IRAM_ATTR reedSwitchISR() {
 void setup () {
   Serial.begin(9600);
   lcd.begin();
+  lcd.clear();
+  lcd.setCursor(0, 0);    // Set the cursor to the second line
+  lcd.print("Menghubungkan");   // Display a label
+  lcd.setCursor(0, 1);    // Set the cursor to the second line
+  lcd.print("WiFi..");   // Display a label
   configTime(0, 0, "pool.ntp.org");      // get UTC time via NTP
   client.setTrustAnchors(&cert); // Add root certificate for api.telegram.org
   WiFi.begin(ssid, password);
@@ -54,6 +62,11 @@ void setup () {
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
+  lcd.clear();
+  lcd.setCursor(0, 0);    // Set the cursor to the second line
+  lcd.print("Tersambung");   // Display a label
+  lcd.setCursor(0, 1);    // Set the cursor to the second line
+  lcd.print(WiFi.localIP());   // Display a label
   Serial.println(WiFi.localIP());
   Serial.println();
   bot.sendMessage(CHAT_ID, "Wifi ARG Hulu Terhubung!", "");
@@ -61,20 +74,34 @@ void setup () {
   pinMode(reedSwitchPin, INPUT_PULLUP); // Enable internal pull-up resistor
   attachInterrupt(digitalPinToInterrupt(reedSwitchPin), reedSwitchISR, FALLING); // Attach ISR to the falling edge of the reed switch signal
   rtc.begin();
-  lastResetTime = millis();
-  delay(2000); 
+  delay(1000);
+  lcd.clear();
+  lcd.setCursor(0, 0);    // Set the cursor to the second line
+  lcd.print("Memulai");   // Display a label
+  lcd.setCursor(0, 1);    // Set the cursor to the second line
+  lcd.print("Sistem");   // Display a label
+  delay(1000); 
 }
 
 void loop () {
 
-  unsigned long currentTime = millis();
-  if (currentTime - lastResetTime >= resetInterval) {
+  DateTime now = rtc.now();
+  unsigned long currentTime = now.unixtime();
+  if (currentTime - lastResetTime10 >= 600) {
     // Reset the tipCount to zero
-    tipCount = 0;
-    rain = 0; 
+    tipCount10 = 0;
+    rain10 = 0; 
     
     // Update the last reset time
-    lastResetTime = currentTime;
+    lastResetTime10 = currentTime;
+  }
+  if (currentTime - lastResetTime24 >= 86400) {
+    // Reset the tipCount to zero
+    tipCount24 = 0;
+    rain24 = 0; 
+    
+    // Update the last reset time
+    lastResetTime24 = currentTime;
   }
 
  if ((WiFi.status() == WL_CONNECTED)) {
@@ -89,9 +116,11 @@ void loop () {
       // C:\xampp\htdocs\arducoding_tutorial\nodemcu_log\webapi\api\create.php
       // address ="https://hanip.my.id/webapiarghulu/api/create.php?level=0&hujan=";
       // address += String(rain);
-      address ="https://hanip.my.id/webapiarghulu/api/create.php?hujan=";
-      address += String(rain);
-      address += "&level=0"; 
+      address ="https://fews.stmkg.ac.id/webapiarg/api/create.php?hujan=";
+      address += String(rain10);
+      address += "&hujan24=";
+      address += String(rain24);
+
         
       https.begin(*client,address);  //Specify request destination
       int httpCode = https.GET();//Send the request
@@ -109,18 +138,13 @@ void loop () {
   }else{
     Serial.print("Not connected to wifi ");Serial.println(ssid);
   }
-  lastResetTime = currentTime;
-  DateTime now = rtc.now();
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print(now.year(), DEC);
-  lcd.print('/');
-  lcd.print(now.month(), DEC);
-  lcd.print('/');
-  lcd.print(now.day(), DEC);
+  lcd.setCursor(0, 0);    // Set the cursor to the second line
+  lcd.print("CH10: ");   // Display a label
+  lcd.print(rain10); 
   lcd.setCursor(0, 1);    // Set the cursor to the second line
-  lcd.print("CRH_HJN: ");   // Display a label
-  lcd.print(rain); 
+  lcd.print("CH24: ");   // Display a label
+  lcd.print(rain24); 
 
   delay(4000);
   
