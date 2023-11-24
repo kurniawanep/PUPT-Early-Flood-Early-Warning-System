@@ -22,6 +22,8 @@ const int BUFFER_SIZE = JSON_OBJECT_SIZE(2048);
 // const char* password = "stmkg2014";
 const char* ssid = "BOLT!Super4G-29C2";
 const char* password = "eqy04890";
+int tinggiSensor = 400;
+int level, jarak;
 
 void setup () {
   arduino.begin(9600);
@@ -56,29 +58,32 @@ void loop () {
     DeserializationError error = deserializeJson(doc, data);
 
   
-    int level = doc["a"];
+    jarak = doc["a"];
     // int hujan = doc["b"];
     Serial.print("Received data: ");
-    Serial.println(level);
-     if (isnan(level)) {
-    Serial.println(F("Failed to read from DHT sensor!"));
-    return;
-     }
+    Serial.println(jarak);
+    if (isnan(jarak)) {
+      Serial.println(F("Failed to read from Ultrasonic sensor!"));
+      return;
+    }
+
+    if (jarak > 50 && jarak < 330 ){
+      level = tinggiSensor - jarak;
+    }
+    
     if ((WiFi.status() == WL_CONNECTED)) {
-      if(level < 300 && level >= 250) {
-        String message = "Status Banjir : SIAGA\nTinggi air melampaui batas, saat ini tinggi air: " + String(level) + " cm";
-        bot.sendMessage(CHAT_ID, message, "");
-      }
-      if (level < 250 && level >= 200) {
-        String message = "Status Banjir : WASPADA\nTinggi air melampaui batas, saat ini tinggi air: " + String(level) + " cm";
-        bot.sendMessage(CHAT_ID, message, "");
-      }
-      if (level < 200){
-        String message = "Status Banjir : AWAS\nTinggi air melampaui batas, saat ini tinggi air: " + String(level) + " cm";
-        // sendMessage(telegramGroupId, message);
-        // Wait 5 seconds before sending another message (adjust as needed)
-        bot.sendMessage(CHAT_ID, message, "");
-      }
+      // if(level < 300 && level >= 250) {
+      //   String message = "Status Banjir : SIAGA\nTinggi air melampaui batas, saat ini tinggi air: " + String(level) + " cm";
+      //   bot.sendMessage(CHAT_ID, message, "");
+      // }else if(level < 250 && level >= 200) {
+      //   String message = "Status Banjir : WASPADA\nTinggi air melampaui batas, saat ini tinggi air: " + String(level) + " cm";
+      //   bot.sendMessage(CHAT_ID, message, "");
+      // }else{
+      //   String message = "Status Banjir : AWAS\nTinggi air melampaui batas, saat ini tinggi air: " + String(level) + " cm";
+      //   // sendMessage(telegramGroupId, message);
+      //   // Wait 5 seconds before sending another message (adjust as needed)
+      //   bot.sendMessage(CHAT_ID, message, "");
+      // }
       std::unique_ptr<BearSSL::WiFiClientSecure> client(new BearSSL::WiFiClientSecure);
       client->setInsecure();
       
@@ -88,13 +93,13 @@ void loop () {
       String address;
       //equate with your computer's IP address and your directory application
       // C:\xampp\htdocs\arducoding_tutorial\nodemcu_log\webapi\api\create.php
-      address ="https://hanip.my.id/webapi/api/create.php?level=";
+      address ="https://rekayasa.stmkg.ac.id/api/data?apiKey=9mr0uKObVFyG0A5z&tinggi_air=";
       address += String(level);
-      address += "&hujan=0"; 
+      // address += "&hujan=0";
       // address += String(hujan) ;
         
       https.begin(*client,address);  //Specify request destination
-      int httpCode = https.GET();//Send the request
+      int httpCode = https.POST("");//Send the request
       String payload;  
       if (httpCode > 0) { //Check the returning code    
           payload = https.getString();   //Get the request response payload
@@ -105,6 +110,7 @@ void loop () {
       }
       
       https.end();   //Close connection
+      
   }else{
     Serial.print("Not connected to wifi ");Serial.println(ssid);
   }
